@@ -31,6 +31,7 @@ package org.owasp.csrfguard;
 import java.io.*;
 import java.security.*;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.*;
 
@@ -72,9 +73,9 @@ public final class CsrfGuard {
 	
 	private String sessionKey = null;
 	
-	private Set<String> protectedPages = null;
+	private Set<Pattern> protectedPages = null;
 
-	private Set<String> unprotectedPages = null;
+	private Set<Pattern> unprotectedPages = null;
 
 	private Set<String> protectedMethods = null;
 
@@ -174,8 +175,8 @@ public final class CsrfGuard {
 				/** page name/class **/
 				if (index < 0) {
 					String pageUri = properties.getProperty(key);
-					
-					csrfGuard.getProtectedPages().add(pageUri);
+
+					csrfGuard.getProtectedPages().add(Pattern.compile(pageUri));
 				}
 			}
 
@@ -187,7 +188,7 @@ public final class CsrfGuard {
 				if (index < 0) {
 					String pageUri = properties.getProperty(key);
 					
-					csrfGuard.getUnprotectedPages().add(pageUri);
+					csrfGuard.getUnprotectedPages().add(Pattern.compile(pageUri));
 				}
 			}
 		}
@@ -203,8 +204,8 @@ public final class CsrfGuard {
 
 	public CsrfGuard() {
 		actions = new ArrayList<IAction>();
-		protectedPages = new HashSet<String>();
-		unprotectedPages = new HashSet<String>();
+		protectedPages = new HashSet<Pattern>();
+		unprotectedPages = new HashSet<Pattern>();
 		protectedMethods = new HashSet<String>();
 	}
 
@@ -304,11 +305,11 @@ public final class CsrfGuard {
 		this.sessionKey = sessionKey;
 	}
 
-	public Set<String> getProtectedPages() {
+	public Set<Pattern> getProtectedPages() {
 		return protectedPages;
 	}
 
-	public Set<String> getUnprotectedPages() {
+	public Set<Pattern> getUnprotectedPages() {
 		return unprotectedPages;
 	}
 
@@ -638,18 +639,14 @@ public final class CsrfGuard {
 	public boolean isProtectedPage(String uri) {
 		boolean retval = !isProtectEnabled();
 
-		for (String protectedPage : protectedPages) {
-			if (isUriExactMatch(protectedPage, uri)) {
-				return true;
-			} else if (isUriMatch(protectedPage, uri)) {
+		for (Pattern protectedPage : protectedPages) {
+			if (isUriMatch(protectedPage, uri)) {
 				retval = true;
 			}
 		}
 
-		for (String unprotectedPage : unprotectedPages) {
-			if (isUriExactMatch(unprotectedPage, uri)) {
-				return false;
-			} else if (isUriMatch(unprotectedPage, uri)) {
+		for (Pattern unprotectedPage : unprotectedPages) {
+			if (isUriMatch(unprotectedPage, uri)) {
 				retval = false;
 			}
 		}
@@ -674,63 +671,9 @@ public final class CsrfGuard {
 	public boolean isProtectedPageAndMethod(HttpServletRequest request) {
 		return isProtectedPageAndMethod(request.getRequestURI(), request.getMethod());
 	}
-	
-	/**
-	 * FIXME: taken from Tomcat - ApplicationFilterFactory
-	 * 
-	 * @param testPath the pattern to match.
-	 * @param requestPath the current request path.
-	 * @return {@code true} if {@code requestPath} matches {@code testPath}.
-	 */
-	private boolean isUriMatch(String testPath, String requestPath) {
-		boolean retval = false;
 
-		/** Case 1: Exact Match **/
-		if (testPath.equals(requestPath)) {
-			retval = true;
-		}
-
-		/** Case 2 - Path Match ("/.../*") **/
-		if (testPath.equals("/*")) {
-			retval = true;
-		}
-		if (testPath.endsWith("/*")) {
-			if (testPath
-					.regionMatches(0, requestPath, 0, testPath.length() - 2)) {
-				if (requestPath.length() == (testPath.length() - 2)) {
-					retval = true;
-				} else if ('/' == requestPath.charAt(testPath.length() - 2)) {
-					retval = true;
-				}
-			}
-		}
-
-		/** Case 3 - Extension Match **/
-		if (testPath.startsWith("*.")) {
-			int slash = requestPath.lastIndexOf('/');
-			int period = requestPath.lastIndexOf('.');
-
-			if ((slash >= 0)
-					&& (period > slash)
-					&& (period != requestPath.length() - 1)
-					&& ((requestPath.length() - period) == (testPath.length() - 1))) {
-				retval = testPath.regionMatches(2, requestPath, period + 1,
-						testPath.length() - 2);
-			}
-		}
-
-		return retval;
-	}
-
-	private boolean isUriExactMatch(String testPath, String requestPath) {
-		boolean retval = false;
-
-		/** Case 1: Exact Match **/
-		if (testPath.equals(requestPath)) {
-			retval = true;
-		}
-
-		return retval;
+	private boolean isUriMatch(Pattern testPath, String requestPath) {
+        return testPath.matcher(requestPath).matches();
 	}
 
 }
