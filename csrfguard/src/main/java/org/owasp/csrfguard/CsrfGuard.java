@@ -383,8 +383,8 @@ public final class CsrfGuard {
 				rotateTokens(request);
 			}
 			/** expected token in session - bad state **/
-		} else if (tokenFromSession == null) {
-			throw new IllegalStateException("CsrfGuard expects the token to exist in session at this point");
+		} else if ((tokenFromSession == null) && !valid) {
+            throw new IllegalStateException("CsrfGuard expects the token to exist in session at this point");
 		} else {
 			/** unprotected page - nothing to do **/
 		}
@@ -566,9 +566,9 @@ public final class CsrfGuard {
 		if (tokenFromRequest == null) {
 			/** FAIL: token is missing from the request **/
 			throw new CsrfGuardException("required token is missing from the request");
-		} else if (!tokenFromSession.equals(tokenFromRequest)) {
-			/** FAIL: the request token does not match the session token **/
-			throw new CsrfGuardException("request token does not match session token");
+		} else if (tokenFromRequest.indexOf(tokenFromSession) == -1) {
+            /** FAIL: the request token does not match the session token **/
+            throw new CsrfGuardException("request token does not match session token");
 		}
 	}
 
